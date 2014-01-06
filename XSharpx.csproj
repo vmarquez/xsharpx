@@ -33,7 +33,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
-    <Compile Include="src\XSharpx\IEnumerableExtension.cs" />
+    <Compile Include="src\XSharpx\FreeDict.cs" />
     <Compile Include="src\XSharpx\Option.cs" />
     <Compile Include="src\XSharpx\Pair.cs" />
     <Compile Include="src\XSharpx\ListBuffer.cs" />
