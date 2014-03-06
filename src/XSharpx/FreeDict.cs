@@ -8,37 +8,37 @@ namespace XSharpx
 
     public class FreeDict<A, B, C>
     {
-        public readonly Either<C, Either<Func<Tuple<A, B, FreeDict<A, B, C>>>, Func<Tuple<A, Func<B,FreeDict<A, B, C>>>>>> maybeGetPushMore;
-       
+        public readonly Either<C, Either<Func<Tuple<A, B, FreeDict<A, B, C>>>, Func<Tuple<A, Func<B, FreeDict<A, B, C>>>>>> maybeGetPutMore;
+
         public FreeDict(C c) //Done
         {
-            maybeGetPushMore = Either<C, Either<Func<Tuple<A, B, FreeDict<A, B, C>>>, Func<Tuple<A, Func<B, FreeDict<A, B, C>>>>>>.Left(c);
+            maybeGetPutMore = Either<C, Either<Func<Tuple<A, B, FreeDict<A, B, C>>>, Func<Tuple<A, Func<B, FreeDict<A, B, C>>>>>>.Left(c);
         }
 
         public FreeDict(Func<Tuple<A, B, FreeDict<A, B, C>>> f) //Add+More
         {
-            maybeGetPushMore = Either<C, Either<Func<Tuple<A, B, FreeDict<A, B, C>>>, Func<Tuple<A, Func<B,FreeDict<A, B, C>>>>>>
+            maybeGetPutMore = Either<C, Either<Func<Tuple<A, B, FreeDict<A, B, C>>>, Func<Tuple<A, Func<B, FreeDict<A, B, C>>>>>>
                  .Right(Either<Func<Tuple<A, B, FreeDict<A, B, C>>>, Func<Tuple<A, Func<B, FreeDict<A, B, C>>>>>.Left(f));
         }
 
-        public FreeDict(Func<Tuple<A, Func<B,FreeDict<A, B, C>>>> f)//Get+More
+        public FreeDict(Func<Tuple<A, Func<B, FreeDict<A, B, C>>>> f)//Get+More
         {
-            maybeGetPushMore = Either<C, Either<Func<Tuple<A, B, FreeDict<A, B, C>>>, Func<Tuple<A, Func<B, FreeDict<A, B, C>>>>>>
+            maybeGetPutMore = Either<C, Either<Func<Tuple<A, B, FreeDict<A, B, C>>>, Func<Tuple<A, Func<B, FreeDict<A, B, C>>>>>>
                 .Right(Either<Func<Tuple<A, B, FreeDict<A, B, C>>>, Func<Tuple<A, Func<B, FreeDict<A, B, C>>>>>.Right(f));
         }
 
         public static FreeDict<A, B, Unit> Add(A a, B b)
         {
-            return new FreeDict<A, B, Unit>(()=>new Tuple<A,B,FreeDict<A,B,Unit>>(a, b, new FreeDict<A,B,Unit>(new Unit())));
+            return new FreeDict<A, B, Unit>(() => new Tuple<A, B, FreeDict<A, B, Unit>>(a, b, new FreeDict<A, B, Unit>(new Unit())));
         }
 
         public static FreeDict<A, B, B> Get(A a)
         {
-            return new FreeDict<A,B,B>( ()=> new Tuple<A,Func<B,FreeDict<A,B,B>>>(a, (b)=>new FreeDict<A,B,B>(b)));
+            return new FreeDict<A, B, B>(() => new Tuple<A, Func<B, FreeDict<A, B, B>>>(a, (b) => new FreeDict<A, B, B>(b)));
         }
 
         //UNSAFE
-        public C Run
+        public Option<C> Run
         {
             get
             {
@@ -46,20 +46,29 @@ namespace XSharpx
             }
         }
 
-        private C RunRec(Dictionary<A, B> dict)
+        private Option<C> RunRec(Dictionary<A, B> dict)
         {
-            return maybeGetPushMore.Swap.Reduce(mf => mf.Fold(addf =>
-            {
-                var t = addf();
-                dict.Add(t.Item1, t.Item2);
-                return t.Item3.RunRec(dict);
-            },
-            getf =>
-            {
-                var t = getf();
-                var b = dict[t.Item1];
-                return t.Item2(b).RunRec(dict);
-            }));
+            return maybeGetPutMore
+                .Swap
+                .Select(c => Option<C>.Some(c))
+                .Reduce(mf => mf.Fold(
+                    addf =>
+                    {
+                        var t = addf();
+                        dict.Add(t.Item1, t.Item2);
+                        return t.Item3.RunRec(dict);
+                    },
+                    getf =>
+                    {
+                        var t = getf();
+                        B b = default(B);//technically unsafe, but this is more performant that checking once than doing a contains, then a get
+                        var success = dict.TryGetValue(t.Item1, out b);
+                        if (success)
+                            return Option<B>.Some(b).SelectMany(bb => t.Item2(bb).RunRec(dict));
+                        else
+                            return Option<C>.Empty;
+                    }
+              ));
         }
     }
 
@@ -77,7 +86,7 @@ namespace XSharpx
 
         public static FreeDict<A, B, D> SelectMany<A, B, C, D>(this FreeDict<A, B, C> fd, Func<C, FreeDict<A, B, D>> bind)
         {
-            return fd.maybeGetPushMore.Fold(c => bind(c), mf => mf.Fold(addf =>
+            return fd.maybeGetPutMore.Fold(c => bind(c), mf => mf.Fold(addf =>
                 {
                     var t = addf();
                     return new FreeDict<A, B, D>(() => new Tuple<A, B, FreeDict<A, B, D>>(t.Item1, t.Item2, t.Item3.SelectMany(c => bind(c))));
@@ -89,6 +98,6 @@ namespace XSharpx
            ));
         }
     }
-     
+
 }
 
