@@ -45,7 +45,7 @@ namespace XSharpx
                 return RunRec(new Dictionary<A, B>());
             }
         }
-
+        
         private Option<C> RunRec(Dictionary<A, B> dict)
         {
             return maybeGetPutMore
@@ -56,6 +56,7 @@ namespace XSharpx
                     {
                         var t = addf();
                         dict.Add(t.Item1, t.Item2);
+                        Console.WriteLine("adding to ");
                         return t.Item3.RunRec(dict);
                     },
                     getf =>
@@ -63,13 +64,16 @@ namespace XSharpx
                         var t = getf();
                         B b = default(B);//technically unsafe, but this is more performant that checking once than doing a contains, then a get
                         var success = dict.TryGetValue(t.Item1, out b);
+                        Console.WriteLine("Reading from!");
                         if (success)
-                            return Option<B>.Some(b).SelectMany(bb => t.Item2(bb).RunRec(dict));
+                            return t.Item2(b).RunRec(dict);
+                        
                         else
                             return Option<C>.Empty;
                     }
               ));
         }
+
     }
 
     public static class FreeDictExt
@@ -97,7 +101,13 @@ namespace XSharpx
                 }
            ));
         }
+
+        public static FreeDict<A, B, Unit> SequenceF<A,B,C>(this List<FreeDict<A,B,C>> lf) {
+            return lf.FoldRight((fd, b) => fd.SelectMany(aa => b.Select(bb => Unit.Value)) , new FreeDict<A,B,Unit>(Unit.Value));
+        }
     }
+
+   
 
 }
 
