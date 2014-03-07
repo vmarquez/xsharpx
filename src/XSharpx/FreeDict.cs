@@ -56,7 +56,6 @@ namespace XSharpx
                     {
                         var t = addf();
                         dict.Add(t.Item1, t.Item2);
-                        Console.WriteLine("adding to ");
                         return t.Item3.RunRec(dict);
                     },
                     getf =>
@@ -64,7 +63,6 @@ namespace XSharpx
                         var t = getf();
                         B b = default(B);//technically unsafe, but this is more performant that checking once than doing a contains, then a get
                         var success = dict.TryGetValue(t.Item1, out b);
-                        Console.WriteLine("Reading from!");
                         if (success)
                             return t.Item2(b).RunRec(dict);
                         
