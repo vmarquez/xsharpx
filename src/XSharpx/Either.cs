@@ -72,7 +72,7 @@ namespace XSharpx {
       get {
         return l ? Either<B, A>.Right(a) : Either<B, A>.Left(b);
       }
-    }
+    } 
 
     public Either<A, B> Swapped(Func<Either<B, A>, Either<B, A>> f) {
       return f(Swap).Swap;
